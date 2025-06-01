@@ -2,69 +2,70 @@ pipeline {
     agent any
 
     environment {
-        FLYWAY_VERSION = '8.5.0'
+        FLYWAY_IMAGE = 'flyway/flyway:8.5.0'
+        POSTGRES_IMAGE = 'postgres:13'
         DB_NAME = 'mydb'
         DB_USER = 'postgres'
-        DB_PASS = 'password'
-        NETWORK = "${env.JOB_NAME}-network"
+        DB_PASSWORD = 'password'
+        DB_PORT = '5432'
+        CONTAINER_NAME = 'pg_test'
+        NETWORK_NAME = 'flyway-network'
     }
 
     stages {
         stage('Start PostgreSQL') {
             steps {
-                sh '''
                 echo "🐘 Starte PostgreSQL-Container..."
-                docker network create ${NETWORK} || true
-                docker run -d \
-                    --name pg_test \
-                    --network ${NETWORK} \
-                    -e POSTGRES_DB=$DB_NAME \
-                    -e POSTGRES_USER=$DB_USER \
-                    -e POSTGRES_PASSWORD=$DB_PASS \
-                    -p 5433:5432 \
-                    postgres:13
+                sh """
+                    docker network create ${NETWORK_NAME}
+                    docker run -d --name ${CONTAINER_NAME} --network ${NETWORK_NAME} \
+                        -e POSTGRES_DB=${DB_NAME} \
+                        -e POSTGRES_USER=${DB_USER} \
+                        -e POSTGRES_PASSWORD=${DB_PASSWORD} \
+                        -p 5433:5432 ${POSTGRES_IMAGE}
 
-                echo "⏳ Warte auf PostgreSQL..."
-                for i in {1..10}; do
-                  docker exec pg_test pg_isready -U $DB_USER && break
-                  sleep 2
-                done
-                '''
+                    echo "⏳ Warte auf PostgreSQL..."
+                    for i in {1..10}; do
+                      docker exec ${CONTAINER_NAME} pg_isready -U ${DB_USER} && break
+                      sleep 2
+                    done
+                """
             }
         }
 
         stage('Run Flyway Migration') {
             steps {
-                sh '''
                 echo "🚀 Starte Flyway-Migration..."
-                docker run --rm \
-                    --network ${NETWORK} \
-                    -v $WORKSPACE/src/main/resources/db/migration:/flyway/sql \
-                    -e FLYWAY_URL=jdbc:postgresql://pg_test:5432/$DB_NAME \
-                    -e FLYWAY_USER=$DB_USER \
-                    -e FLYWAY_PASSWORD=$DB_PASS \
-                    flyway/flyway:$FLYWAY_VERSION migrate
-                '''
+                sh """
+                    docker run --rm --network ${NETWORK_NAME} \
+                        -v \$(pwd)/app/src/main/resources/db/migration:/flyway/sql \
+                        -e FLYWAY_URL=jdbc:postgresql://${CONTAINER_NAME}:${DB_PORT}/${DB_NAME} \
+                        -e FLYWAY_USER=${DB_USER} \
+                        -e FLYWAY_PASSWORD=${DB_PASSWORD} \
+                        ${FLYWAY_IMAGE} migrate
+                """
             }
         }
 
         stage('Show Flyway History') {
             steps {
-                sh '''
                 echo "📜 Flyway Schema History:"
-                docker exec -i pg_test psql -U $DB_USER -d $DB_NAME -c "SELECT version, description, success, installed_on FROM flyway_schema_history ORDER BY installed_rank;"
-                '''
+                sh """
+                    docker exec -i ${CONTAINER_NAME} \
+                        psql -U ${DB_USER} -d ${DB_NAME} \
+                        -c "SELECT version, description, success, installed_on FROM flyway_schema_history ORDER BY installed_rank;"
+                """
             }
         }
     }
 
     post {
         always {
-            echo '🧹 Räume auf...'
-            sh '''
-            docker rm -f pg_test || true
-            docker network rm ${NETWORK} || true
-            '''
+            echo "🧹 Räume auf..."
+            sh """
+                docker rm -f ${CONTAINER_NAME}
+                docker network rm ${NETWORK_NAME}
+            """
         }
     }
 }
