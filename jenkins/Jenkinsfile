@@ -13,11 +13,17 @@ pipeline {
     }
 
     stages {
+        stage('Checkout') {
+            steps {
+                checkout scm  // This ensures files are properly checked out
+            }
+        }
+
         stage('Start PostgreSQL') {
             steps {
                 echo "🐘 Starte PostgreSQL-Container..."
                 sh """
-                    docker network create ${NETWORK_NAME}
+                    docker network create ${NETWORK_NAME} || true
                     docker run -d --name ${CONTAINER_NAME} --network ${NETWORK_NAME} \
                         -e POSTGRES_DB=${DB_NAME} \
                         -e POSTGRES_USER=${DB_USER} \
@@ -38,11 +44,21 @@ pipeline {
                 echo "🚀 Starte Flyway-Migration..."
                 sh """
                     docker run --rm --network ${NETWORK_NAME} \
-                        -v /var/jenkins_home/workspace/flyway/app/src/main/resources/db/migration:/flyway/sql \
+                        -v ${WORKSPACE}/src/main/resources/db/migration:/flyway/sql \  // Updated this line
                         -e FLYWAY_URL=jdbc:postgresql://${CONTAINER_NAME}:${DB_PORT}/${DB_NAME} \
                         -e FLYWAY_USER=${DB_USER} \
                         -e FLYWAY_PASSWORD=${DB_PASSWORD} \
-                        ${FLYWAY_IMAGE} migrate
+                        ${FLYWAY_IMAGE} \
+                        info  // First run 'info' to check detected migrations
+                """
+                sh """
+                    docker run --rm --network ${NETWORK_NAME} \
+                        -v ${WORKSPACE}/src/main/resources/db/migration:/flyway/sql \
+                        -e FLYWAY_URL=jdbc:postgresql://${CONTAINER_NAME}:${DB_PORT}/${DB_NAME} \
+                        -e FLYWAY_USER=${DB_USER} \
+                        -e FLYWAY_PASSWORD=${DB_PASSWORD} \
+                        ${FLYWAY_IMAGE} \
+                        migrate
                 """
             }
         }
@@ -63,8 +79,8 @@ pipeline {
         always {
             echo "🧹 Räume auf..."
             sh """
-                docker rm -f ${CONTAINER_NAME}
-                docker network rm ${NETWORK_NAME}
+                docker rm -f ${CONTAINER_NAME} || true
+                docker network rm ${NETWORK_NAME} || true
             """
         }
     }
