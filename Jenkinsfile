@@ -33,12 +33,23 @@ pipeline {
             }
         }
 
+        stage('Drop flyway_schema_history (for test)') {
+            steps {
+                echo "🧨 Dropping flyway_schema_history table (for testing clean migration)..."
+                sh """
+                    docker exec -i ${CONTAINER_NAME} \
+                        psql -U ${DB_USER} -d ${DB_NAME} \
+                        -c "DROP TABLE IF EXISTS flyway_schema_history CASCADE;"
+                """
+            }
+        }
+
         stage('Run Flyway Migration') {
             steps {
                 echo "🚀 Running Flyway migration..."
                 sh """
                     docker run --rm --network ${NETWORK_NAME} \
-                        -v "${WORKSPACE}:/workspace" \
+                        -v "\$WORKSPACE:/workspace" \
                         -e FLYWAY_URL=jdbc:postgresql://${CONTAINER_NAME}:${DB_PORT}/${DB_NAME} \
                         -e FLYWAY_USER=${DB_USER} \
                         -e FLYWAY_PASSWORD=${DB_PASSWORD} \
@@ -64,8 +75,8 @@ pipeline {
         always {
             echo "🧹 Cleaning up..."
             sh """
-                docker rm -f ${CONTAINER_NAME} || true
-                docker network rm ${NETWORK_NAME} || true
+                docker rm -f ${CONTAINER_NAME}
+                docker network rm ${NETWORK_NAME}
             """
         }
     }
