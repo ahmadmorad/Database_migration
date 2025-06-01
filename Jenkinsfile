@@ -10,6 +10,7 @@ pipeline {
         DB_PORT = '5432'
         CONTAINER_NAME = 'pg_test'
         NETWORK_NAME = 'flyway-network'
+        VERSION = "v1.0.${BUILD_NUMBER}"
     }
 
     stages {
@@ -44,17 +45,25 @@ pipeline {
             }
         }
 
+        stage('Build and Push Flyway Image') {
+            steps {
+                echo "🐳 Building and Pushing Flyway image..."
+                sh """
+                    docker build -t ahmadmorad/flyway-migrations:${VERSION} ./infrastructure/flyway
+                    docker push ahmadmorad/flyway-migrations:${VERSION}
+                """
+            }
+        }
+
         stage('Run Flyway Migration') {
             steps {
-                echo "🚀 Running Flyway migration..."
+                echo "🚀 Running Flyway Migration..."
                 sh """
                     docker run --rm --network ${NETWORK_NAME} \
-                        -v "\$WORKSPACE:/workspace" \
-                        -e FLYWAY_URL=jdbc:postgresql://${CONTAINER_NAME}:${DB_PORT}/${DB_NAME} \
-                        -e FLYWAY_USER=${DB_USER} \
-                        -e FLYWAY_PASSWORD=${DB_PASSWORD} \
-                        -e FLYWAY_LOCATIONS=filesystem:/workspace/app/src/main/resources/db/migration \
-                        ${FLYWAY_IMAGE} migrate
+                      -e FLYWAY_URL=jdbc:postgresql://${CONTAINER_NAME}:${DB_PORT}/${DB_NAME} \
+                      -e FLYWAY_USER=${DB_USER} \
+                      -e FLYWAY_PASSWORD=${DB_PASSWORD} \
+                      ahmadmorad/flyway-migrations:${VERSION} migrate
                 """
             }
         }
@@ -75,8 +84,8 @@ pipeline {
         always {
             echo "🧹 Cleaning up..."
             sh """
-                docker rm -f ${CONTAINER_NAME}
-                docker network rm ${NETWORK_NAME}
+                docker rm -f ${CONTAINER_NAME} || true
+                docker network rm ${NETWORK_NAME} || true
             """
         }
     }
