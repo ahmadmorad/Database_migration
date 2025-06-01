@@ -64,8 +64,8 @@ pipeline {
         always {
             echo "🧹 Cleaning up..."
             sh """
-                docker rm -f ${CONTAINER_NAME}
-                docker network rm ${NETWORK_NAME}
+                docker rm -f ${CONTAINER_NAME} || true
+                docker network rm ${NETWORK_NAME} || true
             """
         }
     }
