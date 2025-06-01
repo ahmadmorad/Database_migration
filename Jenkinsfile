@@ -38,10 +38,11 @@ pipeline {
                 echo "🚀 Running Flyway migration..."
                 sh """
                     docker run --rm --network ${NETWORK_NAME} \
-                        -v "${WORKSPACE}/app/src/main/resources/db/migration:/flyway/sql" \
+                        -v "${WORKSPACE}:/workspace" \
                         -e FLYWAY_URL=jdbc:postgresql://${CONTAINER_NAME}:${DB_PORT}/${DB_NAME} \
                         -e FLYWAY_USER=${DB_USER} \
                         -e FLYWAY_PASSWORD=${DB_PASSWORD} \
+                        -e FLYWAY_LOCATIONS=filesystem:/workspace/app/src/main/resources/db/migration \
                         ${FLYWAY_IMAGE} migrate
                 """
             }
