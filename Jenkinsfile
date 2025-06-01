@@ -13,12 +13,6 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
         stage('Start PostgreSQL') {
             steps {
                 echo "🐘 Starting PostgreSQL container..."
@@ -30,21 +24,11 @@ pipeline {
                         -e POSTGRES_PASSWORD=${DB_PASSWORD} \
                         -p 5433:5432 ${POSTGRES_IMAGE}
 
-                    echo "⏳ Waiting for PostgreSQL..."
+                    echo "⏳ Waiting for PostgreSQL to be ready..."
                     for i in {1..10}; do
-                        docker exec ${CONTAINER_NAME} pg_isready -U ${DB_USER} && break
-                        sleep 2
+                      docker exec ${CONTAINER_NAME} pg_isready -U ${DB_USER} && break
+                      sleep 2
                     done
-                """
-            }
-        }
-
-        stage('Verify Migration Files') {
-            steps {
-                echo "🔍 Checking migration files..."
-                sh """
-                    echo "Workspace path: ${WORKSPACE}"
-                    ls -la ${WORKSPACE}/src/main/resources/db/migration
                 """
             }
         }
@@ -54,21 +38,11 @@ pipeline {
                 echo "🚀 Running Flyway migration..."
                 sh """
                     docker run --rm --network ${NETWORK_NAME} \
-                        -v ${WORKSPACE}/app/src/main/resources/db/migration:/flyway/sql \
+                        -v \${WORKSPACE}/app/src/main/resources/db/migration:/flyway/sql \
                         -e FLYWAY_URL=jdbc:postgresql://${CONTAINER_NAME}:${DB_PORT}/${DB_NAME} \
                         -e FLYWAY_USER=${DB_USER} \
                         -e FLYWAY_PASSWORD=${DB_PASSWORD} \
-                        ${FLYWAY_IMAGE} \
-                        info
-                """
-                sh """
-                    docker run --rm --network ${NETWORK_NAME} \
-                        -v ${WORKSPACE}/src/main/resources/db/migration:/flyway/sql \
-                        -e FLYWAY_URL=jdbc:postgresql://${CONTAINER_NAME}:${DB_PORT}/${DB_NAME} \
-                        -e FLYWAY_USER=${DB_USER} \
-                        -e FLYWAY_PASSWORD=${DB_PASSWORD} \
-                        ${FLYWAY_IMAGE} \
-                        migrate
+                        ${FLYWAY_IMAGE} migrate
                 """
             }
         }
@@ -89,8 +63,8 @@ pipeline {
         always {
             echo "🧹 Cleaning up..."
             sh """
-                docker rm -f ${CONTAINER_NAME} || true
-                docker network rm ${NETWORK_NAME} || true
+                docker rm -f ${CONTAINER_NAME}
+                docker network rm ${NETWORK_NAME}
             """
         }
     }
