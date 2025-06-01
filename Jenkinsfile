@@ -49,7 +49,7 @@ pipeline {
             steps {
                 echo "🐳 Building and Pushing Flyway image..."
                 sh """
-                    docker build -t ahmadmorad/flyway-migrations:${VERSION} ./infrastructure/flyway
+                    docker build -t ahmadmorad/flyway-migrations:${version} -f infrastructure/flyway/Dockerfile .
                     docker push ahmadmorad/flyway-migrations:${VERSION}
                 """
             }
