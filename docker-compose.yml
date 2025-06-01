@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # Your existing services
   db:
     image: postgres:13
     environment:
@@ -14,18 +13,22 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   app:
-    build: .
+    build:
+      context: ./app
     depends_on:
       - db
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/mydb
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: password
+    ports:
+      - "8081:8080"
 
-  # New Jenkins service
   jenkins:
-    image: jenkins/jenkins:lts
-    privileged: true  # Required for Docker-in-Docker
+    build:
+      context: ./jenkins
+    container_name: jenkins
+    privileged: true
     user: root
     ports:
       - "8088:8080"
@@ -33,7 +36,8 @@ services:
     volumes:
       - jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./jenkins:/var/jenkins_home/pipelines  # Mount local jenkins folder
+    environment:
+      - DOCKER_HOST=unix:///var/run/docker.sock
 
 volumes:
   postgres_data:
