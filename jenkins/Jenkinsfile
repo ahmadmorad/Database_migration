@@ -38,7 +38,7 @@ pipeline {
                 echo "🚀 Starte Flyway-Migration..."
                 sh """
                     docker run --rm --network ${NETWORK_NAME} \
-                        -v \$(pwd)/app/src/main/resources/db/migration:/flyway/sql \
+                        -v /var/jenkins_home/workspace/flyway/app/src/main/resources/db/migration:/flyway/sql \
                         -e FLYWAY_URL=jdbc:postgresql://${CONTAINER_NAME}:${DB_PORT}/${DB_NAME} \
                         -e FLYWAY_USER=${DB_USER} \
                         -e FLYWAY_PASSWORD=${DB_PASSWORD} \
