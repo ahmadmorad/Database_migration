@@ -9,6 +9,13 @@ pipeline {
         FLYWAY_DB = "mydb"
         LIQUIBASE_DB = "liquibasedb"
         POSTGRES_PORT = "5433"
+
+        // 🔁 Switchable DB hostnames:
+        LOCAL_DB_HOST = "pg_test"
+        DOCKER_DB_HOST = "db"
+
+        // 👇 Change this line to switch between the two
+        ACTIVE_DB_HOST = "db" // or "db"
     }
 
     stages {
@@ -52,7 +59,7 @@ pipeline {
                     docker run --rm \
                         --network ci-network \
                         flyway-migrations:${FLYWAY_VERSION} \
-                        -url=jdbc:postgresql://pg_test:5432/${FLYWAY_DB} \
+                        -url=jdbc:postgresql://${ACTIVE_DB_HOST}:5432/${FLYWAY_DB} \
                         -user=${POSTGRES_USER} \
                         -password=${POSTGRES_PASSWORD} \
                         migrate
@@ -66,7 +73,7 @@ pipeline {
                     docker run --rm \
                         --network ci-network \
                         flyway-migrations:${FLYWAY_VERSION} \
-                        -url=jdbc:postgresql://pg_test:5432/${FLYWAY_DB} \
+                        -url=jdbc:postgresql://${ACTIVE_DB_HOST}:5432/${FLYWAY_DB} \
                         -user=${POSTGRES_USER} \
                         -password=${POSTGRES_PASSWORD} \
                         info
@@ -83,7 +90,7 @@ pipeline {
                     docker run --rm \
                         --network ci-network \
                         liquibase-runner:${LIQUIBASE_VERSION} \
-                        --url=jdbc:postgresql://pg_test:5432/${LIQUIBASE_DB} \
+                        --url=jdbc:postgresql://${ACTIVE_DB_HOST}:5432/${LIQUIBASE_DB} \
                         --username=${POSTGRES_USER} \
                         --password=${POSTGRES_PASSWORD} \
                         --changeLogFile=changelog/master.xml \
