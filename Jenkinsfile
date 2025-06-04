@@ -10,12 +10,9 @@ pipeline {
         LIQUIBASE_DB = "liquibasedb"
         POSTGRES_PORT = "5433"
 
-        // 🔁 Switchable DB hostnames:
         LOCAL_DB_HOST = "pg_test"
         DOCKER_DB_HOST = "db"
-
-        // 👇 Change this line to switch between the two
-        ACTIVE_DB_HOST = "db" // or "db"
+        ACTIVE_DB_HOST = "db"
     }
 
     stages {
