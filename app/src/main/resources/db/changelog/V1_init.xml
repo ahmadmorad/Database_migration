@@ -1,0 +1,8 @@
+<changeSet id="1" author="ahmad">
+    <createTable tableName="roles">
+        <column name="id" type="serial">
+            <constraints primaryKey="true"/>
+        </column>
+        <column name="name" type="varchar(100)"/>
+    </createTable>
+</changeSet>
