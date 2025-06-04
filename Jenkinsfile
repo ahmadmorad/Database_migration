@@ -3,9 +3,11 @@ pipeline {
 
     environment {
         FLYWAY_VERSION = "v1.0.0"
+        LIQUIBASE_VERSION = "v1.0.0"
         POSTGRES_USER = "postgres"
         POSTGRES_PASSWORD = "password"
-        POSTGRES_DB = "mydb"
+        FLYWAY_DB = "mydb"
+        LIQUIBASE_DB = "liquibasedb"
         POSTGRES_PORT = "5433"
     }
 
@@ -15,15 +17,17 @@ pipeline {
             steps {
                 echo "Starting PostgreSQL container..."
                 sh '''
-                    docker network create flyway-network || true
-                    docker run -d --name pg_test --network flyway-network \
-                        -e POSTGRES_DB=${POSTGRES_DB} \
+                    docker network create ci-network || true
+
+                    docker run -d --name pg_test --network ci-network \
+                        -e POSTGRES_DB=${FLYWAY_DB} \
                         -e POSTGRES_USER=${POSTGRES_USER} \
                         -e POSTGRES_PASSWORD=${POSTGRES_PASSWORD} \
                         -p ${POSTGRES_PORT}:5432 postgres:13
 
-                    echo "Waiting for PostgreSQL to be ready..."
                     sleep 5
+
+                    docker exec pg_test psql -U ${POSTGRES_USER} -c "CREATE DATABASE ${LIQUIBASE_DB};"
                     docker exec pg_test pg_isready -U ${POSTGRES_USER}
                 '''
             }
@@ -31,9 +35,9 @@ pipeline {
 
         stage('Drop flyway_schema_history (for test)') {
             steps {
-                echo "Dropping flyway_schema_history table (for testing clean migration)..."
+                echo "Dropping flyway_schema_history..."
                 sh '''
-                    docker exec -i pg_test psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} \
+                    docker exec -i pg_test psql -U ${POSTGRES_USER} -d ${FLYWAY_DB} \
                         -c "DROP TABLE IF EXISTS flyway_schema_history CASCADE;"
                 '''
             }
@@ -41,14 +45,14 @@ pipeline {
 
         stage('Build Flyway Image and Run Migration') {
             steps {
-                echo "Building Flyway image and running migration..."
+                echo "Running Flyway migrations..."
                 sh '''
                     docker build -t flyway-migrations:${FLYWAY_VERSION} -f infrastructure/flyway/Dockerfile .
 
                     docker run --rm \
-                        --network flyway-network \
+                        --network ci-network \
                         flyway-migrations:${FLYWAY_VERSION} \
-                        -url=jdbc:postgresql://pg_test:5432/${POSTGRES_DB} \
+                        -url=jdbc:postgresql://pg_test:5432/${FLYWAY_DB} \
                         -user=${POSTGRES_USER} \
                         -password=${POSTGRES_PASSWORD} \
                         migrate
@@ -58,15 +62,32 @@ pipeline {
 
         stage('Show Flyway History') {
             steps {
-                echo " Showing Flyway migration history..."
                 sh '''
                     docker run --rm \
-                        --network flyway-network \
+                        --network ci-network \
                         flyway-migrations:${FLYWAY_VERSION} \
-                        -url=jdbc:postgresql://pg_test:5432/${POSTGRES_DB} \
+                        -url=jdbc:postgresql://pg_test:5432/${FLYWAY_DB} \
                         -user=${POSTGRES_USER} \
                         -password=${POSTGRES_PASSWORD} \
                         info
+                '''
+            }
+        }
+
+        stage('Build Liquibase Image and Run Migration') {
+            steps {
+                echo "Running Liquibase migrations..."
+                sh '''
+                    docker build -t liquibase-runner:${LIQUIBASE_VERSION} -f infrastructure/liquibase/Dockerfile .
+
+                    docker run --rm \
+                        --network ci-network \
+                        liquibase-runner:${LIQUIBASE_VERSION} \
+                        --url=jdbc:postgresql://pg_test:5432/${LIQUIBASE_DB} \
+                        --username=${POSTGRES_USER} \
+                        --password=${POSTGRES_PASSWORD} \
+                        --changeLogFile=changelog/master.xml \
+                        update
                 '''
             }
         }
@@ -77,7 +98,7 @@ pipeline {
             echo "Cleaning up..."
             sh '''
                 docker rm -f pg_test || true
-                docker network rm flyway-network || true
+                docker network rm ci-network || true
             '''
         }
     }
