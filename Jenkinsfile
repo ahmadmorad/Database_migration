@@ -15,7 +15,9 @@ pipeline {
     }
 
     stages {
-
+        stage('Debug workspace') {
+            steps { sh 'ls -R | head -40' }      // list first 40 lines of the tree
+        }
         stage('Prepare network') {
             steps {
                 sh 'docker network create ci-network || true'
