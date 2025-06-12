@@ -42,19 +42,20 @@ pipeline {
             }
         }
 
-        stage('Liquibase update') {
-            steps {
-                sh """
-                    docker run --rm --network ci-network -v "\$PWD":/workspace \
-                      liquibase/liquibase:${LIQUIBASE_VERSION} \
-                      --url=jdbc:postgresql://pg_test:5432/${DB_NAME} \
-                      --username=${POSTGRES_USER} \
-                      --password=${POSTGRES_PASSWORD} \
-                      --changeLogFile=/workspace/${CHANGELOG_FILE} \
-                      update
-                """
-            }
-        }
+       stage('Liquibase update') {
+           steps {
+               sh """
+                 docker run --rm --network ci-network \
+                   -v "\$PWD":/liquibase \               # <-- CHANGE HERE
+                   liquibase/liquibase:${LIQUIBASE_VERSION} \
+                   --url=jdbc:postgresql://pg_test:5432/${DB_NAME} \
+                   --username=${POSTGRES_USER} \
+                   --password=${POSTGRES_PASSWORD} \
+                   --changeLogFile=app/src/main/resources/db/changelog/master.xml \
+                   update
+               """
+           }
+       }
 
         stage('Liquibase validate') {
             steps {
