@@ -11,7 +11,7 @@ pipeline {
         DB_PORT           = '5433'            // external port on Jenkins node
 
         /* ===== Changelog location in repo ===== */
-        CHANGELOG_FILE    = 'src/main/resources/db/changelog/master.xml'
+        CHANGELOG_FILE    = 'app/src/main/resources/db/changelog/master.xml'
     }
 
     stages {
