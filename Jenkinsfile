@@ -46,7 +46,7 @@ pipeline {
            steps {
                sh """
                  docker run --rm --network ci-network \
-                   -v "\$PWD":/liquibase \               # <-- CHANGE HERE
+                   -v "\$PWD":/liquibase \
                    liquibase/liquibase:${LIQUIBASE_VERSION} \
                    --url=jdbc:postgresql://pg_test:5432/${DB_NAME} \
                    --username=${POSTGRES_USER} \
