@@ -2,57 +2,89 @@ pipeline {
     agent any
 
     environment {
-        DB_NAME = 'liquibasedb'
-        DB_USER = 'postgres'
-        DB_PASSWORD = 'password'
-        DB_PORT = '5436'
-        DB_IMAGE = 'postgres:13'
+        LIQUIBASE_VERSION = '4.28.0'
+        POSTGRES_VERSION  = '13'
+        POSTGRES_USER     = 'postgres'
+        POSTGRES_PASSWORD = 'password'
+        DB_NAME           = 'liquibasedb'
+        DB_PORT           = '5433'
+
+        // Path adjustments
+        CHANGELOG_DIR = 'app/src/main/resources/db/changelog'
+        CHANGELOG_MOUNT_PATH  = '/liquibase/changelog'
     }
 
     stages {
+        stage('Verify Files') {
+            steps {
+                sh """
+                    echo "Changelog files:"
+                    ls -la ${CHANGELOG_DIR}/
+                """
+            }
+        }
+
+        stage('Prepare network') {
+            steps {
+                sh 'docker network create ci-network || true'
+            }
+        }
 
         stage('Start PostgreSQL') {
             steps {
-                script {
-                    sh '''
-                        docker network create ci-network || true
+                sh """
+                  docker run -d --name pg_test --network ci-network \
+                    -e POSTGRES_DB=${DB_NAME} \
+                    -e POSTGRES_USER=${POSTGRES_USER} \
+                    -e POSTGRES_PASSWORD=${POSTGRES_PASSWORD} \
+                    -p ${DB_PORT}:5432 postgres:${POSTGRES_VERSION}
 
-                        docker run -d --name liquibase-db --network ci-network \
-                            -e POSTGRES_DB=${DB_NAME} \
-                            -e POSTGRES_USER=${DB_USER} \
-                            -e POSTGRES_PASSWORD=${DB_PASSWORD} \
-                            -p ${DB_PORT}:5436 ${DB_IMAGE}
-
-                        echo "Waiting for PostgreSQL to start..."
-                        sleep 10
-                    '''
-                }
+                  for i in {1..30}; do
+                    docker exec pg_test pg_isready -U ${POSTGRES_USER} && break
+                    sleep 1
+                  done
+                """
             }
         }
 
-        stage('Run Liquibase Migration') {
+        stage('Liquibase update') {
             steps {
-                sh '''
-                    ./mvnw liquibase:update \
-                      -Dspring.datasource.url=jdbc:postgresql://localhost:${DB_PORT}/${DB_NAME} \
-                      -Dspring.datasource.username=${DB_USER} \
-                      -Dspring.datasource.password=${DB_PASSWORD}
-                '''
+                sh """
+                  docker run --rm --network ci-network \
+                    -v "${WORKSPACE}/${CHANGELOG_DIR}:${CHANGELOG_MOUNT_PATH}" \
+                    liquibase/liquibase:${LIQUIBASE_VERSION} \
+                    --url=jdbc:postgresql://pg_test:5432/${DB_NAME} \
+                    --username=${POSTGRES_USER} \
+                    --password=${POSTGRES_PASSWORD} \
+                    --changeLogFile=${CHANGELOG_MOUNT_PATH}/master.xml \
+                    --searchPath=${CHANGELOG_MOUNT_PATH} \
+                    update
+                """
             }
         }
 
-        stage('Build Application') {
+        stage('Liquibase validate') {
             steps {
-                sh './mvnw clean package'
+                sh """
+                  docker run --rm --network ci-network \
+                    -v "${WORKSPACE}/${CHANGELOG_DIR}:${CHANGELOG_MOUNT_PATH}" \
+                    liquibase/liquibase:${LIQUIBASE_VERSION} \
+                    --url=jdbc:postgresql://pg_test:5432/${DB_NAME} \
+                    --username=${POSTGRES_USER} \
+                    --password=${POSTGRES_PASSWORD} \
+                    --changeLogFile=${CHANGELOG_MOUNT_PATH}/master.xml \
+                    --searchPath=${CHANGELOG_MOUNT_PATH} \
+                    validate
+                """
             }
         }
-
-    }
 
     post {
         always {
-            echo 'Cleaning up...'
-            sh 'docker stop liquibase-db || true && docker rm liquibase-db || true'
+            sh '''
+              docker rm -f pg_test || true
+              docker network rm ci-network || true
+            '''
         }
     }
 }
