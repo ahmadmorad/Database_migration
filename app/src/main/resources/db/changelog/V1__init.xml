@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.9.xsd">
+
+    <!-- Create users table -->
+    <changeSet id="1" author="ahmad" context="dev">
+        <comment>Create initial users table</comment>
+
+        <createTable tableName="users" schemaName="public">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="username" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="email" type="VARCHAR(100)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="users"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Create posts table with foreign key -->
+    <changeSet id="2" author="ahmad" context="dev">
+        <comment>Create posts table with user relationship</comment>
+
+        <createTable tableName="posts">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_post_user"
+                             referencedTableName="users" referencedColumnNames="id"/>
+            </column>
+            <column name="title" type="VARCHAR(200)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="content" type="TEXT"/>
+            <column name="published" type="BOOLEAN" defaultValue="false"/>
+        </createTable>
+
+        <createIndex tableName="posts" indexName="idx_post_user">
+            <column name="user_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="posts"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Insert sample data -->
+    <changeSet id="3" author="ahmad" context="dev,test">
+        <comment>Insert initial test data</comment>
+
+        <sql>INSERT INTO users (username, email) VALUES ('admin', 'admin@example.com')</sql>
+        <sql>INSERT INTO users (username, email) VALUES ('user1', 'user1@example.com')</sql>
+
+        <rollback>
+            <delete tableName="users">
+                <where>username IN ('admin', 'user1')</where>
+            </delete>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
