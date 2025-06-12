@@ -79,12 +79,13 @@ pipeline {
             }
         }
 
-    post {
-        always {
-            sh '''
-              docker rm -f pg_test || true
-              docker network rm ci-network || true
-            '''
+        post {
+            always {
+                sh '''
+                  docker rm -f pg_test || true
+                  docker network rm ci-network || true
+                '''
+            }
         }
     }
 }
