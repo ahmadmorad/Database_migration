@@ -11,7 +11,8 @@ pipeline {
         DB_PORT           = '5433'            // external port on Jenkins node
 
         /* ===== Changelog location in repo ===== */
-        CHANGELOG_FILE    = 'app/src/main/resources/db/changelog/master.xml'
+         CHANGELOG_DIR = 'app/src/main/resources/db/changelog'
+         CHANGELOG_FILE_IN_CONTAINER = 'changelog/master.xml'
     }
 
     stages {
@@ -43,33 +44,35 @@ pipeline {
         }
 
        stage('Liquibase update') {
-           steps {
-               sh """
-                 docker run --rm --network ci-network \\
-                   -v "\$PWD/${CHANGELOG_DIR}":/liquibase/changelog \\
-                   liquibase/liquibase:${LIQUIBASE_VERSION} \\
-                   --url=jdbc:postgresql://pg_test:5432/${DB_NAME} \\
-                   --username=${POSTGRES_USER} \\
-                   --password=${POSTGRES_PASSWORD} \\
-                   --changeLogFile=changelog/master.xml \\
-                   update
-               """
-           }
-       }
+                  steps {
+                      sh '''
+                        docker run --rm --network ci-network \
+                          -v "$PWD/$CHANGELOG_DIR":/liquibase/changelog \
+                          liquibase/liquibase:$LIQUIBASE_VERSION \
+                          --url=jdbc:postgresql://pg_test:5432/$DB_NAME \
+                          --username=$POSTGRES_USER \
+                          --password=$POSTGRES_PASSWORD \
+                          --changeLogFile=$CHANGELOG_FILE_IN_CONTAINER \
+                          update
+                      '''
+                  }
+              }
 
-        stage('Liquibase validate') {
-            steps {
-                sh """
-                    docker run --rm --network ci-network -v "\$PWD":/workspace \
-                      liquibase/liquibase:${LIQUIBASE_VERSION} \
-                      --url=jdbc:postgresql://pg_test:5432/${DB_NAME} \
-                      --username=${POSTGRES_USER} \
-                      --password=${POSTGRES_PASSWORD} \
-                      --changeLogFile=/workspace/${CHANGELOG_FILE} \
-                      validate
-                """
-            }
-        }
+              stage('Liquibase validate') {
+                  steps {
+                      sh '''
+                        docker run --rm --network ci-network \
+                          -v "$PWD/$CHANGELOG_DIR":/liquibase/changelog \
+                          liquibase/liquibase:$LIQUIBASE_VERSION \
+                          --url=jdbc:postgresql://pg_test:5432/$DB_NAME \
+                          --username=$POSTGRES_USER \
+                          --password=$POSTGRES_PASSWORD \
+                          --changeLogFile=$CHANGELOG_FILE_IN_CONTAINER \
+                          validate
+                      '''
+                  }
+              }
+          }
 
         stage('Run Maven tests') {
             steps {
