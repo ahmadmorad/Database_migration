@@ -79,7 +79,6 @@ pipeline {
                 sh './mvnw -B test'
             }
         }
-    }
 
     post {
         always {
