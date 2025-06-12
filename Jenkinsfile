@@ -5,7 +5,7 @@ pipeline {
         DB_NAME = 'liquibasedb'
         DB_USER = 'postgres'
         DB_PASSWORD = 'password'
-        DB_PORT = '5432'
+        DB_PORT = '5436'
         DB_IMAGE = 'postgres:13'
     }
 
@@ -21,7 +21,7 @@ pipeline {
                             -e POSTGRES_DB=${DB_NAME} \
                             -e POSTGRES_USER=${DB_USER} \
                             -e POSTGRES_PASSWORD=${DB_PASSWORD} \
-                            -p ${DB_PORT}:5432 ${DB_IMAGE}
+                            -p ${DB_PORT}:5436 ${DB_IMAGE}
 
                         echo "Waiting for PostgreSQL to start..."
                         sleep 10
