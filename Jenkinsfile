@@ -8,7 +8,7 @@ pipeline {
         POSTGRES_USER     = 'postgres'
         POSTGRES_PASSWORD = 'password'
         DB_NAME           = 'liquibasedb'
-        DB_PORT           = '5432'            // external port on Jenkins node
+        DB_PORT           = '5433'            // external port on Jenkins node
 
         /* ===== Changelog location in repo ===== */
         CHANGELOG_FILE    = 'src/main/resources/db/changelog/master.xml'
