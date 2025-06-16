@@ -6,6 +6,6 @@
                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.9.xsd">
 
     <!-- Use ONE of these: -->
-    <include file="db/changelog/V1__init.xml"/>
+    <include file="liquibase/V1__init.xml"/>
     <!-- OR -->
 </databaseChangeLog>
