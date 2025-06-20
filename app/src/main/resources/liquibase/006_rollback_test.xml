@@ -1,0 +1,12 @@
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog">
+    <changeSet id="6" author="ahmad">
+        <createTable tableName="rollback_test">
+            <column name="id" type="int">
+                <constraints primaryKey="true"/>
+            </column>
+        </createTable>
+        <rollback>
+            <dropTable tableName="rollback_test"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
