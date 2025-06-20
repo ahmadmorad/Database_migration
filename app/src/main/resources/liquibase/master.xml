@@ -5,10 +5,10 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
 
-    <include file="001_create_user_table.xml"/>
-    <include file="002_invalid_syntax.xml"/>
-    <include file="003_duplicate_table.xml"/>
-    <include file="004_long_running_migration.xml"/>
-    <include file="005_locked_table.xml"/>
-    <include file="006_rollback_test.xml"/>
+    <include file="liquibase/001_create_user_table.xml"/>
+    <include file="liquibase/002_invalid_syntax.xml"/>
+    <include file="liquibase/003_duplicate_table.xml"/>
+    <include file="liquibase/004_long_running_migration.xml"/>
+    <include file="liquibase/005_locked_table.xml"/>
+    <include file="liquibase/006_rollback_test.xml"/>
 </databaseChangeLog>
